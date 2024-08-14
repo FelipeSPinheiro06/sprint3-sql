@@ -1,17 +1,17 @@
 -- Dropando as tabelas caso forem existentes
 DROP TABLE FEEDBACK;
 DROP TABLE COMPANY;
-DROP TABLE "User";
+DROP TABLE customer;
 DROP TABLE frases;
 DROP TABLE dicionario_sentimentos;
 
 -- Dropando as sequences caso forem existentes
 DROP SEQUENCE seq_feedback;
 DROP SEQUENCE seq_company;
-DROP SEQUENCE seq_user;
+DROP SEQUENCE seq_customer;
 
 
--- 1. Criando a tabela Users
+-- 1. Criando a tabela Customer
 CREATE TABLE customer (
     id_customer     INTEGER NOT NULL,
     name            VARCHAR2(60) NOT NULL,
@@ -110,22 +110,68 @@ INSERT INTO feedback (id_feedback, nm_customer, feeling, dt_feedback, company, c
 INSERT INTO feedback (id_feedback, nm_customer, feeling, dt_feedback, company, customer_id_customer, company_id_company) VALUES (seq_feedback.nextval, 'Guilherme', 'Regular', '12-06-2023', 'Samsung', 4, 4);
 INSERT INTO feedback (id_feedback, nm_customer, feeling, dt_feedback, company, customer_id_customer, company_id_company) VALUES (seq_feedback.nextval, 'Matheus', 'Awesome', '03-02-2024', 'Samsung', 5, 4);
 
+-- 11. Criação de um dicionário que armazena sentimentos
+CREATE TABLE dicionario_sentimentos (
+    id_sentimento   NUMBER PRIMARY KEY,
+    palavra_chave   VARCHAR2(100),
+    peso            NUMBER -- Peso 1 para sentimento positivo e -1 para sentimento negativo
+);
+
+-- Criando a sequence e inserindo 5 registros na tabela dicionario_sentimentos
+CREATE SEQUENCE seq_dicionario
+    START WITH 1
+    INCREMENT BY 1
+    MINVALUE 1
+    MAXVALUE 10000
+    NOCYCLE;
+    
+    
+-- 12. Inserir alguns dados no dicionário de sentimentos
+INSERT INTO dicionario_sentimentos (id_sentimento, palavra_chave, peso) VALUES (seq_dicionario.nextval, 'pessimo', -1);
+INSERT INTO dicionario_sentimentos (id_sentimento, palavra_chave, peso) VALUES (seq_dicionario.nextval, 'ruim', -1);
+INSERT INTO dicionario_sentimentos (id_sentimento, palavra_chave, peso) VALUES (seq_dicionario.nextval, 'medio', 1);
+INSERT INTO dicionario_sentimentos (id_sentimento, palavra_chave, peso) VALUES (seq_dicionario.nextval, 'bom', 1);
+INSERT INTO dicionario_sentimentos (id_sentimento, palavra_chave, peso) VALUES (seq_dicionario.nextval, 'excelente', 1);
+
+
+-- 13. Criar uma tabela para armazenar as frases a serem analisadas
+CREATE TABLE frases (
+    id_frase    NUMBER PRIMARY KEY,
+    frase       VARCHAR2(500)
+);
+
+
+-- Criando a sequence e inserindo 5 registros na tabela frases
+CREATE SEQUENCE seq_frases
+    START WITH 1
+    INCREMENT BY 1
+    MINVALUE 1
+    MAXVALUE 10000
+    NOCYCLE;
+
+
+-- 14. Inserir algumas frases na tabela de frases
+INSERT INTO frases (id_frase, frase) VALUES (seq_frases.nextval, 'O serviço foi muito bom e rápido.');
+INSERT INTO frases (id_frase, frase) VALUES (seq_frases.nextval, 'A comida estava ruim e o atendimento foi péssimo.');
+INSERT INTO frases (id_frase, frase) VALUES (seq_frases.nextval, 'O serviço foi mediano, nada a acrescentar.');
+INSERT INTO frases (id_frase, frase) VALUES (seq_frases.nextval, 'O serviço foi péssimo.');
+INSERT INTO frases (id_frase, frase) VALUES (seq_frases.nextval, 'O serviço foi excelente, estão de parabéns.');
+
 
 -- 1ª Procedure: Seleciona duas tabelas usando o Join e exibe os dados em JSON
 SET SERVEROUTPUT ON;
 CREATE OR REPLACE PROCEDURE relatorio_feedbacks
-(customer_id INTEGER) 
 IS BEGIN
     -- Pegando os dados
-    SELECT a.nome, b.feeling
-    FROM CUSTOMER a
-    LEFT JOIN FEEDBACK b
-    WHERE customer_id = a.id AND customer_id = b.customer_id_customer;
+    SELECT a.name, b.feeling
+    FROM customer a
+    LEFT JOIN feedback b
+    ON a.id_customer = b.customer_id_customer;
     
     -- Print JSON
     DBMS_OUTPUT.PUT_LINE(transform_json(
-        p_id => customer_id,
-        p_nome => a.nome,
+        p_id => a.id_customer,
+        p_nome => a.name,
         p_feeling => b.feeling
     ));
 END relatorio_feedbacks;
@@ -137,7 +183,8 @@ END relatorio_feedbacks;
 -- 1ª Função: Transformar dados exibidos em JSON
 CREATE OR REPLACE FUNCTION transform_json (
     p_id        IN INTEGER, 
-    p_nome      IN VARCHAR2
+    p_nome      IN VARCHAR2,
+    p_feeling   IN VARCHAR2
 ) RETURN CLOB IS 
     v_json CLOB;
 BEGIN
